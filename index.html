@@ -76,6 +76,20 @@ h1,h2,h3{font-family:var(--display);font-weight:700;margin:0;line-height:1.05;le
 .mv .nm{font-weight:600;line-height:1.25}
 .mv .cue{display:block;font-weight:400;font-size:14px;color:var(--muted);margin-top:2px}
 .mv .ds{font-family:var(--display);font-size:20px;font-weight:600;white-space:nowrap;text-align:right}
+.tag{display:inline-block;font-size:12px;font-weight:600;border:1.5px solid var(--line);color:var(--muted);border-radius:6px;padding:0 5px;margin-left:6px;vertical-align:2px}
+.nmbtn{border:0;background:none;padding:0;text-align:left;font-weight:600;line-height:1.25}
+.rate{padding:0 0 12px 18px;display:grid;gap:8px}
+.rate .seg{margin:0}
+.rate .seg button{padding:9px 4px;font-size:15px}
+.rate .lbl{font-size:13px;color:var(--muted);margin-bottom:-4px}
+.ph{position:relative;width:100%;max-width:380px;aspect-ratio:850/568;border-radius:12px;overflow:hidden;background:var(--soft);margin:4px 0 10px}
+.ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.ph img.b{animation:flip 2.4s infinite}
+@keyframes flip{0%,42%{opacity:0}50%,92%{opacity:1}100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.ph img.b{animation:none;opacity:0}}
+.phwrap{padding:0 0 4px 18px}
+.tph{max-width:min(380px,70vw);max-height:26vh;margin:6px auto 0;width:auto}
+#timer.hasph .tnum{font-size:min(24vw,150px)}
 .new{display:inline-block;font-size:12px;font-weight:600;background:var(--ink);color:var(--surface);border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:2px}
 .swap{border:0;background:var(--soft);width:40px;height:40px;border-radius:10px;font-size:18px;line-height:1}
 .swap:disabled{opacity:.3}
@@ -158,9 +172,9 @@ nav button[aria-current="page"]{color:var(--ink);box-shadow:inset 0 3px 0 var(--
 /* ------------------------------------------------------------------ data */
 const PAT = {
   squat:{n:'Squat'}, hinge:{n:'Hinge'}, push:{n:'Push',dark:true}, pull:{n:'Pull'},
-  lunge:{n:'Lunge'}, carry:{n:'Carry'}, core:{n:'Core'}, engine:{n:'Engine'}, mob:{n:'Mobility'}
+  lunge:{n:'Lunge'}, carry:{n:'Carry'}, core:{n:'Core'}, engine:{n:'Engine'}, iso:{n:'Arms & small muscles'}, mob:{n:'Mobility'}
 };
-const PCOL = {squat:'#C8363C',hinge:'#2D66B0',push:'#D9A514',pull:'#2C8A57',lunge:'#7B52B0',carry:'#5F6B78',core:'#1C8C93',engine:'#D7641C',mob:'#5E6D80'};
+const PCOL = {squat:'#C8363C',hinge:'#2D66B0',push:'#D9A514',pull:'#2C8A57',lunge:'#7B52B0',carry:'#5F6B78',core:'#1C8C93',engine:'#D7641C',iso:'#B5477A',mob:'#5E6D80'};
 // [id, name, pattern, uses (c=conditioning a=accessory s=skill), base, unit, cue, flags (j=impact x=advanced h=heavy hinge)]
 const RAW = [
 ['airsq','Air squat','squat','c',20,'','Hips back and down, knees track the toes, chest proud.'],
@@ -238,6 +252,16 @@ const RAW = [
 ['tgu','Turkish get-up','core','s',2,'/side','Slow, eyes on the bell. The best full-body skill there is.'],
 ['windmill','Kettlebell windmill','core','s',4,'/side','Bell overhead, hinge sideways, eyes on the bell.'],
 ['bearcrawl','Bear crawl','core','cas',20,' m','Knees an inch off the floor, opposite hand and foot.'],
+['hcurl','Hammer curl','iso','a',10,'','Thumbs up, elbows pinned to your sides, lower slowly.'],
+['dbcurl','Dumbbell curl','iso','a',10,'','Palms up, no swinging, three seconds down.'],
+['bbcurl','Barbell curl','iso','a',8,'','Elbows still, squeeze at the top.'],
+['cablecurl','Standing cable curl','iso','a',12,'','Step back from the stack so there\u2019s tension at the bottom.'],
+['chinhold','Chin-up hold and slow lower','iso','a',3,'','Hold chin over the bar for 5 s, then take 5 s to lower.'],
+['ohtri','Overhead dumbbell triceps extension','iso','a',10,'','One dumbbell behind the head, elbows pointing up.'],
+['cabletri','Standing rope triceps pushdown','iso','a',12,'','Elbows pinned, spread the rope at the bottom.'],
+['diamond','Close-grip push-up','iso','a',8,'','Hands under the chest, elbows brush your ribs.'],
+['latraise','Dumbbell lateral raise','iso','a',12,'','Raise out to the side to shoulder height, lead with the elbows.'],
+['calf','Standing calf raise','iso','a',15,'','Full stretch at the bottom, pause at the top.'],
 ['row','Row','engine','c',15,' cal','Legs, then hips, then arms.'],
 ['bike','Air bike','engine','c',12,' cal','Push and pull with arms and legs.'],
 ['ski','Ski erg','engine','c',12,' cal','Hinge and drive down with the lats.'],
@@ -250,6 +274,16 @@ const RAW = [
 ];
 const M = RAW.map(([id,n,p,u,b,un,cue,f=''])=>({id,n,p,u,b,un,cue,f}));
 const MB = Object.fromEntries(M.map(m=>[m.id,m]));
+// Photos: free-exercise-db (public domain, Unlicense), two frames per exercise
+const IMGBASE='https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
+const IMG={"airsq": "Bodyweight_Squat", "goblet": "Goblet_Squat", "dbthr": "Kettlebell_Thruster", "fsq": "Front_Squat_Clean_Grip", "jsq": "Freehand_Jump_Squat", "kbfsq": "Front_Squats_With_Two_Kettlebells", "ohs": "Overhead_Squat", "pistolp": "Kettlebell_Pistol_Squat", "boxsq": "Box_Squat", "kbs": "One-Arm_Kettlebell_Swings", "bbdl": "Barbell_Deadlift", "dbhpc": "Dumbbell_Clean", "dbsn": "One-Arm_Kettlebell_Snatch", "pclean": "Power_Clean", "hpsn": "Hang_Snatch", "sdhp": "Kettlebell_Sumo_High_Pull", "kbhp": "Kettlebell_Sumo_High_Pull", "gm": "Good_Morning", "hipthr": "Barbell_Hip_Thrust", "pushup": "Pushups", "hrpu": "Pushups", "dbpp": "Push_Press", "bbpp": "Push_Press", "dip": "Parallel_Bar_Dip", "mbpass": "Medicine_Ball_Chest_Pass", "pullup": "Band_Assisted_Pull-Up", "ringrow": "Inverted_Row_with_Straps", "dbrow": "Bent_Over_Two-Dumbbell_Row", "renegade": "Alternating_Renegade_Row", "facepull": "Face_Pull", "jpullup": "Pullups", "bbrow": "Bent_Over_Barbell_Row", "chin": "Chin-Up", "bandpa": "Band_Pull_Apart", "wlunge": "Bodyweight_Walking_Lunge", "dbrlunge": "Dumbbell_Rear_Lunge", "stepup": "Dumbbell_Step_Ups", "jlunge": "Split_Jump", "frlunge": "Dumbbell_Lunges", "farmer": "Farmers_Walk", "sledpush": "Sled_Push", "sleddrag": "Backward_Drag", "situp": "Sit-Up", "plank": "Plank", "kneeraise": "Hanging_Leg_Raise", "vup": "Jackknife_Sit-Up", "rtwist": "Russian_Twist", "deadbug": "Dead_Bug", "pallof": "Pallof_Press", "sideplank": "Side_Bridge", "abwheel": "Ab_Roller", "mclimb": "Mountain_Climbers", "tgu": "Kettlebell_Turkish_Get-Up_Squat_style", "windmill": "Kettlebell_Windmill", "row": "Rowing_Stationary", "run": "Running_Treadmill", "rope": "Rope_Jumping", "du": "Rope_Jumping", "boxjump": "Front_Box_Jump", "skater": "Lateral_Bound", "hcurl": "Hammer_Curls", "dbcurl": "Dumbbell_Bicep_Curl", "bbcurl": "Barbell_Curl", "cablecurl": "Standing_Biceps_Cable_Curl", "chinhold": "Chin-Up", "ohtri": "Standing_Dumbbell_Triceps_Extension", "cabletri": "Triceps_Pushdown_-_Rope_Attachment", "diamond": "Push-Ups_-_Close_Triceps_Position", "latraise": "Side_Lateral_Raise", "calf": "Standing_Calf_Raises"};
+const LIMG={"Back squat": "Barbell_Squat", "Front squat": "Front_Squat_Clean_Grip", "Heavy goblet squat": "Goblet_Squat", "Bench press": "Barbell_Bench_Press_-_Medium_Grip", "Dumbbell bench press": "Dumbbell_Bench_Press", "Close-grip bench press": "Close-Grip_Barbell_Bench_Press", "Incline dumbbell press": "Incline_Dumbbell_Press", "Deadlift": "Barbell_Deadlift", "Trap-bar deadlift": "Trap_Bar_Deadlift", "Romanian deadlift": "Romanian_Deadlift", "Strict press": "Standing_Military_Press", "Push press": "Push_Press", "Standing dumbbell press": "Standing_Dumbbell_Press", "Weighted or banded pull-up": "Band_Assisted_Pull-Up", "Barbell row": "Bent_Over_Barbell_Row", "Pendlay row": "Bent_Over_Barbell_Row", "One-arm dumbbell row": "One-Arm_Dumbbell_Row"};
+function photo(folder,extra){
+  if(!folder) return '';
+  const u=IMGBASE+encodeURIComponent(folder);
+  return `<div class="ph ${extra||''}"><img src="${u}/0.jpg" crossorigin="anonymous" loading="lazy" alt="Start position"><img class="b" src="${u}/1.jpg" crossorigin="anonymous" loading="lazy" alt="End position"></div>`;
+}
+const imgFor=it=>it.id?IMG[it.id]:LIMG[it.name];
 const WARM = [
  ['Inchworm to push-up',''],['World\u2019s greatest stretch',''],['Cat-cow',''],['90/90 hip switches',''],
  ['Deep squat hold with T-spine rotation','squat'],['Goblet squat pry','squat'],['Cossack shifts, bodyweight','squat'],
@@ -272,7 +306,7 @@ const FMT_NAMES = {amrap:'AMRAP',emom:'EMOM',circuit:'Circuit',tabata:'Tabata',f
 
 /* --------------------------------------------------------------- storage */
 const KEY = 'reroll-v1';
-let store = {v:1,updatedAt:0,history:[],excluded:[],liftVar:{},current:null,energy:'normal'};
+let store = {v:1,updatedAt:0,history:[],excluded:[],liftVar:{},ratings:{},current:null,energy:'normal'};
 let dbRef = null, syncMode = 'device', saveT = null;
 try{ const s = localStorage.getItem(KEY); if(s) store = Object.assign(store, JSON.parse(s)); }catch(e){}
 function save(){
@@ -316,6 +350,10 @@ function moveW(m,ctx,use){
   if(ctx.recent.has(m.id)) w*=.25;
   if(ctx.energy==='low' && /[jx]/.test(m.f)) w*=.2;
   if(use==='c' && m.f.includes('x')) w*=.4;
+  const r=store.ratings[m.id]||{};
+  if(r.like===1) w*=1.25;
+  if(r.like===-1) w*=.6;
+  if(r.hard==='hard' && ctx.energy==='low') w*=.4;
   return w;
 }
 function pickMove(pats,use,ctx){
@@ -325,9 +363,18 @@ function pickMove(pats,use,ctx){
   if(m) ctx.used.add(m.id);
   return m;
 }
+function hardAdj(id){const r=store.ratings[id]||{};return r.hard==='hard'?.8:r.hard==='easy'?1.2:1;}
+function doseFor(m,mult,mode){return mode==='max' ? 'max effort' : mode==='skill' ? dose(m,hardAdj(m.id))+', slow' : dose(m,mult*hardAdj(m.id));}
 function mkItem(m,use,mult,mode,done,letter){
-  return {id:m.id,name:m.n,p:m.p,use,mult,mode,cue:m.cue,isNew:!done.has(m.id),letter:letter||'',
-    dose: mode==='max' ? 'max effort' : mode==='skill' ? dose(m,1)+', slow' : dose(m,mult)};
+  return {id:m.id,name:m.n,p:m.p,use,mult,mode,cue:m.cue,isNew:!done.has(m.id),letter:letter||'',dose:doseFor(m,mult,mode)};
+}
+const RLBL={like:{'1':'liked','-1':'disliked'},hard:{easy:'easy',hard:'hard'}};
+function ratingTags(id){const r=store.ratings[id]||{};let t='';if(r.like)t+=`<span class="tag">${RLBL.like[r.like]}</span>`;if(r.hard&&r.hard!=='ok')t+=`<span class="tag">${RLBL.hard[r.hard]}</span>`;return t;}
+function rateUI(id){
+  const r=store.ratings[id]||{};
+  const b=(k,v,label)=>`<button data-a="setrate" data-id="${id}" data-k="${k}" data-v="${v}" aria-pressed="${String(r[k])===String(v)}">${label}</button>`;
+  return `<div class="rate"><span class="lbl">Do you like it?</span><div class="seg" style="grid-template-columns:repeat(2,1fr)">${b('like',1,'Like')}${b('like',-1,'Dislike')}</div>
+    <span class="lbl">How hard is it for you?</span><div class="seg">${b('hard','easy','Easy')}${b('hard','ok','About right')}${b('hard','hard','Hard')}</div></div>`;
 }
 function condParams(fmt,k,energy){
   const e=energy;
@@ -365,7 +412,7 @@ function generate(energy){
   const A=pickMove(skillPats,'s',ctx);
   const prefs=(upperDay?['lunge','hinge','squat']:['pull','push']).filter(p=>!pats.includes(p));
   const B=pickMove(prefs.length?prefs:(upperDay?['lunge','hinge']:['pull','push']),'a',ctx);
-  const C=pickMove(['carry','core'].filter(p=>p!==A?.p),'a',ctx);
+  const C=pickMove(Math.random()<.4?['iso']:['carry','core'].filter(p=>p!==A?.p),'a',ctx);
   const accT={low:9,normal:12,good:12}[energy];
   const acc=[A&&mkItem(A,'s',1,'skill',done,'A'),B&&mkItem(B,'a',1,'reps',done,'B'),C&&mkItem(C,'a',1,'reps',done,'C')].filter(Boolean);
   // warm-up
@@ -443,6 +490,7 @@ function segments(b){
   } else if(b.key==='acc'){
     for(let i=0;i<b.T;i++){const it=b.items[i%b.items.length];S.push({label:it.name,sub:`${it.letter}: ${it.dose}`,secs:60,p:it.p,next:i<b.T-1?b.items[(i+1)%b.items.length].name:''});}
   }
+  S.forEach(sg=>{ if(!sg.rest&&!sg.list){ const it=b.items.find(x=>x.name===sg.label); if(it) sg.img=imgFor(it); } });
   return S;
 }
 let T=null, actx=null, wake=null;
@@ -513,12 +561,14 @@ function drawTimer(){
   const bg=sg.rest?'#3A4452':PCOL[sg.p]||'#3A4452';
   const fg=(!sg.rest&&PAT[sg.p]?.dark)?'#16202E':'#FFFFFF';
   el.style.setProperty('--tbg',bg); el.style.setProperty('--tfg',fg);
+  el.classList.toggle('hasph',!!sg.img);
   const list=sg.list?`<ul class="tlist">${b.items.map(i=>`<li>${esc(i.dose)} ${esc(i.name)}</li>`).join('')}</ul>`:'';
   el.innerHTML=`
     <div class="tt"><span>${esc(b.title)}  ${T.i+1}/${T.segs.length}</span><button data-t="close" aria-label="Close timer">\u2715</button></div>
     <div class="tmid">
       <div class="tlabel">${esc(sg.label)}</div>
       <div class="tsub">${esc(sg.sub||'')}</div>
+      ${sg.img?photo(sg.img,'tph'):''}
       <div class="tnum" id="tnum">${mmss(T.rem)}</div>
       ${list}
       <div class="tnext">${sg.next?'Next: '+esc(sg.next):''}</div>
@@ -543,7 +593,8 @@ document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==
 
 /* ---------------------------------------------------------------- render */
 let tab='today';
-let pending=null, pendingT=null;
+let pending=null, pendingT=null, openRate=null, openMove=null;
+document.addEventListener('toggle',e=>{const d=e.target;if(d.classList&&d.classList.contains('mrow')){if(d.open){if(openMove!==d.dataset.id){openMove=d.dataset.id;const mb=d.querySelector('.mbody');const f=IMG[d.dataset.id];if(mb&&f&&!mb.querySelector('.ph'))mb.insertAdjacentHTML('afterbegin',photo(f));}}else if(openMove===d.dataset.id)openMove=null;}},true);
 function arm(key){pending=key;clearTimeout(pendingT);pendingT=setTimeout(()=>{pending=null;render();},4000);render();}
 const ENAMES={low:'Low energy',normal:'Normal',good:'Feeling good'};
 function render(){
@@ -554,11 +605,14 @@ function render(){
   if(tab==='moves') app.innerHTML=renderMoves();
 }
 function mvRow(it,bi,ii,canSwap){
-  const c=PCOL[it.p]||PCOL.mob;
+  const c=PCOL[it.p]||PCOL.mob, img=imgFor(it);
+  const key=it.id||(img?'lift:'+it.name:null), open=key&&openRate===key;
+  const hint=!key||open?'':it.id?(img?' Tap the name for photos and rating.':' Tap the name to rate it.'):' Tap the name for photos.';
   return `<div class="mv"><span class="plate" style="--c:${c}" title="${esc(PAT[it.p]?.n||'')}"></span>
-    <span class="nm">${it.letter?`<span class="letter">${it.letter}</span>`:''}${esc(it.name)}${it.isNew?'<span class="new">new</span>':''}${it.cue?`<span class="cue">${esc(it.cue)}</span>`:''}</span>
+    <span class="nm">${it.letter?`<span class="letter">${it.letter}</span>`:''}${key?`<button class="nmbtn" data-a="rateopen" data-id="${esc(key)}" aria-expanded="${!!open}">${esc(it.name)}</button>`:esc(it.name)}${it.isNew?'<span class="new">new</span>':''}${it.id?ratingTags(it.id):''}${it.cue||hint?`<span class="cue">${esc(it.cue||'')}${hint}</span>`:''}</span>
     <span class="ds">${esc(it.dose)}</span>
-    <button class="swap" data-a="swap" data-b="${bi}" data-i="${ii}" aria-label="Swap ${esc(it.name)}" ${canSwap?'':'disabled'}>\u21bb</button></div>`;
+    <button class="swap" data-a="swap" data-b="${bi}" data-i="${ii}" aria-label="Swap ${esc(it.name)}" ${canSwap?'':'disabled'}>\u21bb</button></div>
+    ${open?`${img?`<div class="phwrap">${photo(img)}</div>`:''}${it.id?rateUI(it.id):''}`:''}`;
 }
 function renderToday(){
   const s=store.current;
@@ -623,14 +677,16 @@ function renderLog(){
   </div>
   <div class="card"><h2>Lifts</h2>`;
   const nextFam=ORDER[H.length%ORDER.length];
-  ORDER.forEach(f=>{
+  const nextName=LIFTS[nextFam].vars[(store.liftVar[nextFam]||0)%LIFTS[nextFam].vars.length];
+  const logged=ORDER.filter(f=>H.some(x=>x.fam===f&&x.weight));
+  logged.forEach(f=>{
     const L=LIFTS[f]; const rows=H.filter(x=>x.fam===f&&x.weight);
     const last=rows.at(-1);
     h+=`<div class="lift"><span class="plate" style="--c:${PCOL[L.pat]}"></span>
-      <span><b>${esc(last?last.lift:L.vars[(store.liftVar[f]||0)%L.vars.length])}</b>${f===nextFam?'<span class="new">next</span>':''}<br><span class="muted small">${last?`${last.weight} kg at ${esc(last.scheme)}`:'Enter your weight in the Strength block to track it'}</span></span>
-      ${spark(rows.filter(x=>x.lift===(last?.lift)).map(x=>x.weight))}</div>`;
+      <span><b>${esc(last.lift)}</b><br><span class="muted small">${last.weight} kg at ${esc(last.scheme)}</span></span>
+      ${spark(rows.filter(x=>x.lift===last.lift).map(x=>x.weight))}</div>`;
   });
-  h+=`<p class="muted small" style="margin:10px 0 0">Your five main lifts, in rotation order. One comes up each session.</p></div><div class="card"><h2>Sessions</h2>`;
+  h+=`<p class="muted small" style="margin:${logged.length?'10px':'0'} 0 0">${logged.length?'':'Lifts show up here after you log a session with a weight in the Strength block. '}Next up: ${esc(nextName)}.</p></div><div class="card"><h2>Sessions</h2>`;
   if(!H.length) h+=`<p class="muted" style="margin:0">Nothing logged yet. Roll your first workout on the Today tab.</p>`;
   H.slice().reverse().forEach((x,ri)=>{
     const d=new Date(x.date); const idx=H.length-1-ri;
@@ -656,9 +712,9 @@ function renderMoves(){
     list.forEach(m=>{
       const ex=store.excluded.includes(m.id);
       const q=encodeURIComponent(m.n.replace(/\(.*?\)/g,'')+' exercise technique');
-      h+=`<details class="mrow"><summary><span class="dot ${counts[m.id]?'on':''}" style="--c:${PCOL[p]}"></span>
-        <span class="${ex?'x':''}">${esc(m.n)}</span><span class="muted small">${counts[m.id]?counts[m.id]+'\u00d7':'not yet'}</span></summary>
-        <div class="mbody"><p style="margin:0 0 8px">${esc(m.cue)}</p>
+      h+=`<details class="mrow" data-id="${m.id}" ${openMove===m.id?'open':''}><summary><span class="dot ${counts[m.id]?'on':''}" style="--c:${PCOL[p]}"></span>
+        <span><span class="${ex?'x':''}">${esc(m.n)}</span>${ratingTags(m.id)}</span><span class="muted small">${counts[m.id]?counts[m.id]+'\u00d7':'not yet'}</span></summary>
+        <div class="mbody">${openMove===m.id?photo(IMG[m.id]):''}<p style="margin:0 0 8px">${esc(m.cue)}</p>${rateUI(m.id).replace('class="rate"','class="rate" style="padding:0 0 12px"')}
         <div class="row"><a href="https://www.youtube.com/results?search_query=${q}" target="_blank" rel="noopener">Watch a demo</a>
         <button class="btn quiet" data-a="exclude" data-id="${m.id}" style="padding:6px 12px">${ex?'Include again':'Skip this move'}</button></div></div></details>`;
     });
@@ -691,6 +747,7 @@ function importData(text){
   store.history=store.history.concat(added).sort((a,b)=>a.date-b.date);
   store.excluded=[...new Set([...(store.excluded||[]),...(d.excluded||[])])];
   store.liftVar=Object.assign({},d.liftVar||{},store.liftVar||{});
+  store.ratings=Object.assign({},d.ratings||{},store.ratings||{});
   save(); render(); toast(`Imported ${added.length} session${added.length===1?'':'s'}.`);
 }
 document.addEventListener('change',e=>{
@@ -730,6 +787,16 @@ document.addEventListener('click',e=>{
       moves,pats:(s.blocks.find(b=>b.key==='cond')?.items||[]).map(i=>i.p),newCount,mins:s.startedAt?Math.round((Date.now()-s.startedAt)/60000):null});
     store.current=null; save(); render(); window.scrollTo(0,0);
     toast(`Session ${s.n} logged${newCount?`. ${newCount} new move${newCount>1?'s':''} found`:''}.`);
+  }
+  if(act==='rateopen'){ readInputs(); openRate=openRate===a.dataset.id?null:a.dataset.id; render(); }
+  if(act==='setrate'){
+    readInputs();
+    const id=a.dataset.id,k=a.dataset.k,v=k==='like'?+a.dataset.v:a.dataset.v;
+    const r=Object.assign({},store.ratings[id]||{});
+    if(r[k]===v) delete r[k]; else r[k]=v;
+    if(Object.keys(r).length) store.ratings[id]=r; else delete store.ratings[id];
+    if(k==='hard'&&store.current) store.current.blocks.forEach(b=>b.items.forEach(it=>{ if(it.id===id&&MB[id]) it.dose=doseFor(MB[id],it.mult,it.mode); }));
+    save(); render();
   }
   if(act==='exclude'){
     const id=a.dataset.id; const i=store.excluded.indexOf(id);
