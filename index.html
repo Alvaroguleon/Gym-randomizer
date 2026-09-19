@@ -90,6 +90,7 @@ h1,h2,h3{font-family:var(--display);font-weight:700;margin:0;line-height:1.05;le
 .phwrap{padding:0 0 4px 18px}
 .tph{max-width:min(380px,70vw);max-height:26vh;margin:6px auto 0;width:auto}
 #timer.hasph .tnum{font-size:min(24vw,150px)}
+.search{width:100%;font:inherit;padding:12px 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);margin:0 0 14px;-webkit-appearance:none;appearance:none}
 .new{display:inline-block;font-size:12px;font-weight:600;background:var(--ink);color:var(--surface);border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:2px}
 .swap{border:0;background:var(--soft);width:40px;height:40px;border-radius:10px;font-size:18px;line-height:1}
 .swap:disabled{opacity:.3}
@@ -169,6 +170,7 @@ nav button[aria-current="page"]{color:var(--ink);box-shadow:inset 0 3px 0 var(--
 <div class="toast" id="toast" role="status"></div>
 
 <script>
+const APP_VERSION='6';
 /* ------------------------------------------------------------------ data */
 const PAT = {
   squat:{n:'Squat'}, hinge:{n:'Hinge'}, push:{n:'Push',dark:true}, pull:{n:'Pull'},
@@ -593,7 +595,17 @@ document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==
 
 /* ---------------------------------------------------------------- render */
 let tab='today';
-let pending=null, pendingT=null, openRate=null, openMove=null;
+let pending=null, pendingT=null, openRate=null, openMove=null, moveQuery='';
+function applyMoveFilter(){
+  const words=moveQuery.trim().toLowerCase().split(/\s+/).filter(Boolean); let any=false;
+  document.querySelectorAll('.pg').forEach(card=>{
+    let vis=0;
+    card.querySelectorAll('.mrow').forEach(r=>{const ok=words.every(w=>r.dataset.s.includes(w));r.style.display=ok?'':'none';if(ok)vis++;});
+    card.style.display=vis?'':'none'; if(vis) any=true;
+  });
+  const none=document.getElementById('mqnone'); if(none) none.style.display=any?'none':'';
+}
+document.addEventListener('input',e=>{ if(e.target.id==='mq'){ moveQuery=e.target.value; applyMoveFilter(); } });
 document.addEventListener('toggle',e=>{const d=e.target;if(d.classList&&d.classList.contains('mrow')){if(d.open){if(openMove!==d.dataset.id){openMove=d.dataset.id;const mb=d.querySelector('.mbody');const f=IMG[d.dataset.id];if(mb&&f&&!mb.querySelector('.ph'))mb.insertAdjacentHTML('afterbegin',photo(f));}}else if(openMove===d.dataset.id)openMove=null;}},true);
 function arm(key){pending=key;clearTimeout(pendingT);pendingT=setTimeout(()=>{pending=null;render();},4000);render();}
 const ENAMES={low:'Low energy',normal:'Normal',good:'Feeling good'};
@@ -602,7 +614,7 @@ function render(){
   const app=$('#app');
   if(tab==='today') app.innerHTML=renderToday();
   if(tab==='log') app.innerHTML=renderLog();
-  if(tab==='moves') app.innerHTML=renderMoves();
+  if(tab==='moves'){ app.innerHTML=renderMoves(); applyMoveFilter(); }
 }
 function mvRow(it,bi,ii,canSwap){
   const c=PCOL[it.p]||PCOL.mob, img=imgFor(it);
@@ -698,6 +710,7 @@ function renderLog(){
     <p class="muted small" style="margin:0 0 12px">Your data lives only on this phone. Export a backup to Files every few weeks.</p>
     <div class="row"><button class="btn" data-a="export">Export backup</button>
     <label class="btn" style="display:inline-block">Import backup<input type="file" id="imp" accept="application/json,.json" hidden></label></div></div>
+  <p class="muted small">App version ${APP_VERSION}</p>
 `;
   return h;
 }
@@ -705,14 +718,16 @@ function renderMoves(){
   const counts={}; store.history.forEach(h=>(h.moves||[]).forEach(id=>counts[id]=(counts[id]||0)+1));
   const found=Object.keys(counts).length;
   let h=`<div class="top"><h1>Moves</h1><span class="muted small">${found} of ${M.length} found</span></div>
-  <p class="muted" style="margin-top:-6px">New moves get picked more often until you\u2019ve done them. Skip anything you can\u2019t do or don\u2019t have the equipment for.</p>`;
+  <p class="muted" style="margin-top:-6px">New moves get picked more often until you\u2019ve done them. Skip anything you can\u2019t do or don\u2019t have the equipment for.</p>
+  <input id="mq" class="search" type="search" placeholder="Search exercises" value="${esc(moveQuery)}" autocomplete="off" aria-label="Search exercises">
+  <p id="mqnone" class="muted" style="display:none">No exercises match. Try a shorter word, like \u201ccurl\u201d or \u201crow\u201d.</p>`;
   Object.keys(PAT).filter(p=>p!=='mob').forEach(p=>{
     const list=M.filter(m=>m.p===p);
     h+=`<div class="card pg"><h3 style="--c:${PCOL[p]}"><i></i>${PAT[p].n}</h3>`;
     list.forEach(m=>{
       const ex=store.excluded.includes(m.id);
       const q=encodeURIComponent(m.n.replace(/\(.*?\)/g,'')+' exercise technique');
-      h+=`<details class="mrow" data-id="${m.id}" ${openMove===m.id?'open':''}><summary><span class="dot ${counts[m.id]?'on':''}" style="--c:${PCOL[p]}"></span>
+      h+=`<details class="mrow" data-id="${m.id}" data-s="${esc((m.n+' '+PAT[p].n).toLowerCase())}" ${openMove===m.id?'open':''}><summary><span class="dot ${counts[m.id]?'on':''}" style="--c:${PCOL[p]}"></span>
         <span><span class="${ex?'x':''}">${esc(m.n)}</span>${ratingTags(m.id)}</span><span class="muted small">${counts[m.id]?counts[m.id]+'\u00d7':'not yet'}</span></summary>
         <div class="mbody">${openMove===m.id?photo(IMG[m.id]):''}<p style="margin:0 0 8px">${esc(m.cue)}</p>${rateUI(m.id).replace('class="rate"','class="rate" style="padding:0 0 12px"')}
         <div class="row"><a href="https://www.youtube.com/results?search_query=${q}" target="_blank" rel="noopener">Watch a demo</a>
@@ -808,7 +823,25 @@ document.addEventListener('click',e=>{
 });
 setInterval(()=>{const c=$('#clock');if(c&&store.current?.startedAt)c.textContent=mmss((Date.now()-store.current.startedAt)/1000);},1000);
 render();
-if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
+if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').then(r=>r.update()).catch(()=>{})); }
+// iPhone home-screen apps often resume instead of restarting, so check for a newer version on every open.
+async function checkUpdate(){
+  if(T) return; // never interrupt a running timer
+  try{
+    const t=await (await fetch('./index.html',{cache:'no-store'})).text();
+    const m=t.match(/const APP_VERSION='(\d+)'/);
+    if(m&&m[1]!==APP_VERSION){
+      const tried=sessionStorage.getItem('reroll-tried');
+      if(tried===m[1]) return;
+      sessionStorage.setItem('reroll-tried',m[1]);
+      readInputs(); save();
+      navigator.serviceWorker?.getRegistration().then(r=>r&&r.update()).catch(()=>{});
+      setTimeout(()=>location.reload(),300);
+    }
+  }catch(e){}
+}
+setTimeout(checkUpdate,1500);
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') checkUpdate(); });
 </script>
 </body>
 </html>
