@@ -91,6 +91,10 @@ h1,h2,h3{font-family:var(--display);font-weight:700;margin:0;line-height:1.05;le
 .tph{max-width:min(380px,70vw);max-height:26vh;margin:6px auto 0;width:auto}
 #timer.hasph .tnum{font-size:min(24vw,150px)}
 .search{width:100%;font:inherit;padding:12px 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);margin:0 0 14px;-webkit-appearance:none;appearance:none}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.chips button{border:1.5px solid var(--line);background:transparent;border-radius:999px;padding:8px 13px;font-weight:600;font-size:15px}
+.chips button small{font-weight:500;opacity:.75}
+.chips button[aria-pressed="true"]{background:var(--btn);color:var(--btn-ink);border-color:var(--btn)}
 .new{display:inline-block;font-size:12px;font-weight:600;background:var(--ink);color:var(--surface);border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:2px}
 .swap{border:0;background:var(--soft);width:40px;height:40px;border-radius:10px;font-size:18px;line-height:1}
 .swap:disabled{opacity:.3}
@@ -170,7 +174,7 @@ nav button[aria-current="page"]{color:var(--ink);box-shadow:inset 0 3px 0 var(--
 <div class="toast" id="toast" role="status"></div>
 
 <script>
-const APP_VERSION='6';
+const APP_VERSION='7';
 /* ------------------------------------------------------------------ data */
 const PAT = {
   squat:{n:'Squat'}, hinge:{n:'Hinge'}, push:{n:'Push',dark:true}, pull:{n:'Pull'},
@@ -302,6 +306,14 @@ const LIFTS = {
   pull:{pat:'pull',n:'Pull',vars:['Weighted or banded pull-up','Barbell row','Pendlay row','One-arm dumbbell row']}
 };
 const ORDER = ['squat','bench','hinge','pull','press'];
+const FAMLBL = {squat:'Squat',bench:'Bench',hinge:'Deadlift',pull:'Pull',press:'Overhead press'};
+// The lift you've gone longest without. Ties follow ORDER, so with no swaps this is a plain rotation.
+function nextFam(){
+  const H=store.history; let best=ORDER[0], bestIdx=Infinity;
+  ORDER.forEach(f=>{ let i=-1; for(let k=H.length-1;k>=0;k--){ if(H[k].fam===f){i=k;break;} } if(i<bestIdx){bestIdx=i;best=f;} });
+  return best;
+}
+const liftName=f=>LIFTS[f].vars[(store.liftVar[f]||0)%LIFTS[f].vars.length];
 const SCHEMES = [{s:5,r:5,e:150},{s:4,r:8,e:180},{s:6,r:3,e:150}];
 const E = {low:.75,normal:1,good:1.15};
 const FMT_NAMES = {amrap:'AMRAP',emom:'EMOM',circuit:'Circuit',tabata:'Tabata',fortime:'For time'};
@@ -388,8 +400,8 @@ function condParams(fmt,k,energy){
     case 'fortime':{const R={low:3,normal:4,good:5}[e],cap={low:12,normal:15,good:18}[e];return {R,cap,mult:E[e],mode:'reps',meta:`${R} rounds for time`,note:`Finish ${R} rounds as fast as you can, ${cap} min cap. Tap Skip when done and note your time.`};}
   }
 }
-function generate(energy){
-  const n=store.history.length, fam=ORDER[n%ORDER.length], L=LIFTS[fam];
+function generate(energy,famOverride){
+  const n=store.history.length, fam=famOverride||nextFam(), L=LIFTS[fam];
   const v=(store.liftVar[fam]||0)%L.vars.length, lift=L.vars[v];
   const cnt=store.history.filter(h=>h.fam===fam).length, sc=SCHEMES[cnt%3];
   const sets = energy==='low'?sc.s-1:sc.s;
@@ -595,7 +607,10 @@ document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==
 
 /* ---------------------------------------------------------------- render */
 let tab='today';
-let pending=null, pendingT=null, openRate=null, openMove=null, moveQuery='';
+let pending=null, pendingT=null, openRate=null, openMove=null, moveQuery='', rollFam=null, famOpen=false;
+function famChips(sel,due){
+  return `<div class="chips" role="group" aria-label="Today\u2019s lift">${ORDER.map(f=>`<button data-a="setfam" data-f="${f}" aria-pressed="${f===sel}">${FAMLBL[f]}${f===due?' <small>due</small>':''}</button>`).join('')}</div>`;
+}
 function applyMoveFilter(){
   const words=moveQuery.trim().toLowerCase().split(/\s+/).filter(Boolean); let any=false;
   document.querySelectorAll('.pg').forEach(card=>{
@@ -630,12 +645,13 @@ function renderToday(){
   const s=store.current;
   const wk=store.history.filter(h=>h.date>=weekStart()).length;
   if(!s){
-    const n=store.history.length, fam=ORDER[n%ORDER.length], L=LIFTS[fam];
+    const n=store.history.length, due=nextFam(), fam=rollFam||due, L=LIFTS[fam];
     return `<div class="top"><h1>Session ${n+1}</h1><span class="muted small">${wk} this week</span></div>
     <div class="roll">
       <h2>Today\u2019s lift: ${esc(L.vars[(store.liftVar[fam]||0)%L.vars.length])}</h2>
       <p class="muted" style="margin:0">Everything else is a surprise. About 55 minutes, all on the clock.</p>
-      <p class="muted small" style="margin:8px 0 0">Main lifts rotate: ${ORDER.map(f=>esc(LIFTS[f].vars[(store.liftVar[f]||0)%LIFTS[f].vars.length])).join(', ')}. Tap \u21bb on the lift to change its variant.</p>
+      ${famChips(fam,due)}
+      <p class="muted small" style="margin:8px 0 0">The rotation picks the lift you\u2019ve gone longest without. Pick another if you need to; the skipped one comes up next time. After rolling, \u21bb on the lift changes its variant.</p>
       <div class="seg" role="group" aria-label="Energy today">
         ${['low','normal','good'].map(e=>`<button data-a="energy" data-e="${e}" aria-pressed="${store.energy===e}">${{low:'Low energy',normal:'Normal',good:'Feeling good'}[e]}</button>`).join('')}
       </div>
@@ -657,6 +673,7 @@ function renderToday(){
       <div class="bh"><h2>${isDone?'\u2713 ':''}${esc(b.title)}</h2><span class="meta">${esc(b.meta)}</span></div>
       <p class="note">${esc(b.note)}</p>
       ${b.key==='str'?`<div class="hint">${esc(suggestion(s))}</div>`:''}
+      ${b.key==='str'&&!isDone?(famOpen?`<div style="margin-top:10px">${famChips(s.fam,nextFam())}</div>`:`<button class="linkbtn" data-a="famopen">Change today\u2019s lift</button>`):''}
       ${b.items.map((it,ii)=>mvRow(it,bi,ii,!isDone)).join('')}
       ${b.key==='str'?`<div class="field"><input id="w" inputmode="decimal" placeholder="Weight used (kg)" value="${esc(s.weight)}" aria-label="Weight used in kg"></div>`:''}
       ${b.key==='cond'?`<div class="field"><input id="sc" placeholder="Score: rounds, time or notes" value="${esc(s.score)}" aria-label="Conditioning score"></div>`:''}
@@ -688,8 +705,8 @@ function renderLog(){
     <div class="stat"><b>${found}</b><span>of ${M.length} moves</span></div>
   </div>
   <div class="card"><h2>Lifts</h2>`;
-  const nextFam=ORDER[H.length%ORDER.length];
-  const nextName=LIFTS[nextFam].vars[(store.liftVar[nextFam]||0)%LIFTS[nextFam].vars.length];
+  const nf=nextFam();
+  const nextName=liftName(nf);
   const logged=ORDER.filter(f=>H.some(x=>x.fam===f&&x.weight));
   logged.forEach(f=>{
     const L=LIFTS[f]; const rows=H.filter(x=>x.fam===f&&x.weight);
@@ -772,17 +789,31 @@ document.addEventListener('click',e=>{
   const a=e.target.closest('[data-a]'); if(!a) return;
   const act=a.dataset.a, s=store.current;
   if(act==='energy'){store.energy=a.dataset.e;save();render();}
-  if(act==='roll'){store.current=generate(store.energy);save();render();window.scrollTo(0,0);}
+  if(act==='roll'){store.current=generate(store.energy,rollFam);rollFam=null;famOpen=false;save();render();window.scrollTo(0,0);}
+  if(act==='famopen'){famOpen=true;render();}
   if(act==='swap'){readInputs();swap(+a.dataset.b,+a.dataset.i);}
   if(act==='start'){readInputs();save();startTimer(+a.dataset.b);}
   if(act==='markdone'){readInputs();s.done[s.blocks[+a.dataset.b].key]=true;if(!s.startedAt)s.startedAt=Date.now();save();render();}
   if(act==='feel'){readInputs();s.feel=a.dataset.f;save();render();}
   if(act==='discard'){ if(pending==='discard'){pending=null;store.current=null;save();render();toast('Workout discarded.');} else arm('discard'); }
+  if(act==='setfam'){
+    const f=a.dataset.f;
+    if(!s){ rollFam=f===nextFam()?null:f; render(); return; }
+    if(s.done.str||f===s.fam){ famOpen=false; render(); return; }
+    readInputs();
+    const fresh=generate(s.energy,f);
+    fresh.n=s.n; fresh.startedAt=s.startedAt; fresh.score=s.score; fresh.feel=s.feel; fresh.done=Object.assign({},s.done);
+    fresh.blocks=fresh.blocks.map(b=>{ const old=s.blocks.find(o=>o.key===b.key); return s.done[b.key]&&old?old:b; });
+    if(s.done.cond){fresh.format=s.format;}
+    famOpen=false; store.current=fresh; save(); render();
+    toast(`Today\u2019s lift: ${fresh.lift}. Unfinished blocks rebuilt around it.`);
+    return;
+  }
   if(act==='reenergy'||act==='reroll'){
     readInputs();
     const energy=act==='reenergy'?a.dataset.e:s.energy;
     if(act==='reenergy'&&energy===s.energy) return;
-    const fresh=generate(energy);
+    const fresh=generate(energy,s.fam);
     fresh.n=s.n; fresh.startedAt=s.startedAt; fresh.weight=s.weight; fresh.score=s.score; fresh.feel=s.feel; fresh.done=Object.assign({},s.done);
     fresh.var=s.var; fresh.lift=s.lift;
     fresh.blocks=fresh.blocks.map(b=>{ const old=s.blocks.find(o=>o.key===b.key); return s.done[b.key]&&old?old:b; });
