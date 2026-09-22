@@ -95,6 +95,27 @@ h1,h2,h3{font-family:var(--display);font-weight:700;margin:0;line-height:1.05;le
 .chips button{border:1.5px solid var(--line);background:transparent;border-radius:999px;padding:8px 13px;font-weight:600;font-size:15px}
 .chips button small{font-weight:500;opacity:.75}
 .chips button[aria-pressed="true"]{background:var(--btn);color:var(--btn-ink);border-color:var(--btn)}
+.hist summary{list-style:none;cursor:pointer}
+.hist summary::-webkit-details-marker{display:none}
+.sd{margin-top:10px;font-size:15px}
+.sd .when{font-weight:600;margin-bottom:6px}
+.sd h4{font-family:var(--display);font-size:18px;margin:10px 0 2px;display:flex;justify-content:space-between;gap:8px}
+.sd h4 span{font-weight:600;color:var(--muted);font-size:15px}
+.sd ul{list-style:none;margin:0;padding:0}
+.sd li{display:grid;grid-template-columns:5px 1fr auto;gap:10px;align-items:center;padding:4px 0}
+.sd li .plate{height:18px}
+.sd .mvlink{border:0;background:none;padding:0;text-align:left;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
+.cal-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.cal-h h2{font-size:26px}
+.cal-h button{border:0;background:var(--soft);width:44px;height:44px;border-radius:12px;font-size:20px}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.cal .wd{font-size:13px;color:var(--muted);padding:4px 0}
+.cal button{border:0;background:transparent;aspect-ratio:1;border-radius:10px;font-weight:500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:0;font-size:16px}
+.cal button.today{box-shadow:inset 0 0 0 1.5px var(--ink)}
+.cal button.has{background:var(--soft);font-weight:700}
+.cal button[aria-pressed="true"]{background:var(--btn);color:var(--btn-ink)}
+.cal .dots{display:flex;gap:3px;height:7px}
+.cal .dots i{width:7px;height:7px;border-radius:50%;background:var(--c)}
 .new{display:inline-block;font-size:12px;font-weight:600;background:var(--ink);color:var(--surface);border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:2px}
 .swap{border:0;background:var(--soft);width:40px;height:40px;border-radius:10px;font-size:18px;line-height:1}
 .swap:disabled{opacity:.3}
@@ -135,7 +156,7 @@ h1,h2,h3{font-family:var(--display);font-weight:700;margin:0;line-height:1.05;le
 
 /* tabs */
 nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);z-index:5}
-nav div{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr)}
+nav div{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
 nav button{border:0;background:none;padding:14px 0 12px;font-family:var(--display);font-size:20px;font-weight:600;color:var(--muted)}
 nav button[aria-current="page"]{color:var(--ink);box-shadow:inset 0 3px 0 var(--ink)}
 
@@ -169,12 +190,13 @@ nav button[aria-current="page"]{color:var(--ink);box-shadow:inset 0 3px 0 var(--
   <button data-tab="today">Today</button>
   <button data-tab="log">Log</button>
   <button data-tab="moves">Moves</button>
+  <button data-tab="cal">Calendar</button>
 </div></nav>
 <section id="timer" role="dialog" aria-label="Timer"></section>
 <div class="toast" id="toast" role="status"></div>
 
 <script>
-const APP_VERSION='7';
+const APP_VERSION='8';
 /* ------------------------------------------------------------------ data */
 const PAT = {
   squat:{n:'Squat'}, hinge:{n:'Hinge'}, push:{n:'Push',dark:true}, pull:{n:'Pull'},
@@ -607,7 +629,7 @@ document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==
 
 /* ---------------------------------------------------------------- render */
 let tab='today';
-let pending=null, pendingT=null, openRate=null, openMove=null, moveQuery='', rollFam=null, famOpen=false;
+let pending=null, pendingT=null, openRate=null, openMove=null, moveQuery='', rollFam=null, famOpen=false, openHist=null, calMonth=null, calDay=null;
 function famChips(sel,due){
   return `<div class="chips" role="group" aria-label="Today\u2019s lift">${ORDER.map(f=>`<button data-a="setfam" data-f="${f}" aria-pressed="${f===sel}">${FAMLBL[f]}${f===due?' <small>due</small>':''}</button>`).join('')}</div>`;
 }
@@ -621,7 +643,7 @@ function applyMoveFilter(){
   const none=document.getElementById('mqnone'); if(none) none.style.display=any?'none':'';
 }
 document.addEventListener('input',e=>{ if(e.target.id==='mq'){ moveQuery=e.target.value; applyMoveFilter(); } });
-document.addEventListener('toggle',e=>{const d=e.target;if(d.classList&&d.classList.contains('mrow')){if(d.open){if(openMove!==d.dataset.id){openMove=d.dataset.id;const mb=d.querySelector('.mbody');const f=IMG[d.dataset.id];if(mb&&f&&!mb.querySelector('.ph'))mb.insertAdjacentHTML('afterbegin',photo(f));}}else if(openMove===d.dataset.id)openMove=null;}},true);
+document.addEventListener('toggle',e=>{const d=e.target;if(d.classList&&d.classList.contains('hist')){const i=+d.dataset.idx;if(d.open)openHist=i;else if(openHist===i)openHist=null;return;}if(d.classList&&d.classList.contains('mrow')){if(d.open){if(openMove!==d.dataset.id){openMove=d.dataset.id;const mb=d.querySelector('.mbody');const f=IMG[d.dataset.id];if(mb&&f&&!mb.querySelector('.ph'))mb.insertAdjacentHTML('afterbegin',photo(f));}}else if(openMove===d.dataset.id)openMove=null;}},true);
 function arm(key){pending=key;clearTimeout(pendingT);pendingT=setTimeout(()=>{pending=null;render();},4000);render();}
 const ENAMES={low:'Low energy',normal:'Normal',good:'Feeling good'};
 function render(){
@@ -629,6 +651,7 @@ function render(){
   const app=$('#app');
   if(tab==='today') app.innerHTML=renderToday();
   if(tab==='log') app.innerHTML=renderLog();
+  if(tab==='cal') app.innerHTML=renderCal();
   if(tab==='moves'){ app.innerHTML=renderMoves(); applyMoveFilter(); }
 }
 function mvRow(it,bi,ii,canSwap){
@@ -695,6 +718,41 @@ function spark(vals){
   const pts=vals.map((v,i)=>`${(i/(vals.length-1)*(w-6)+3).toFixed(1)},${(h-3-(v-mn)/r*(h-6)).toFixed(1)}`).join(' ');
   return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
 }
+const hm=t=>new Date(t).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false});
+const dayKey=t=>{const d=new Date(t);return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();};
+function sessionDetail(x){
+  const start=x.start||(x.mins!=null?x.date-x.mins*60000:null);
+  const when=new Date(x.date).toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'});
+  let s=`<div class="sd"><div class="when">${esc(when)}${start?`, ${hm(start)}\u2013${hm(x.end||x.date)} (${Math.round(((x.end||x.date)-start)/60000)} min)`:`, logged ${hm(x.date)}`}</div>`;
+  const li=(it)=>`<li><span class="plate" style="--c:${PCOL[it.p]||PCOL.mob}"></span><span>${it.id&&MB[it.id]?`<button class="mvlink" data-a="findmove" data-id="${it.id}">${esc(it.name)}</button>`:esc(it.name)}</span><span class="muted">${esc(it.dose||'')}</span></li>`;
+  if(x.blocks){
+    x.blocks.forEach(b=>{ s+=`<h4>${esc(b.title)}<span>${b.done?esc(b.meta):'not done'}</span></h4><ul>${b.items.map(li).join('')}</ul>`; });
+  } else {
+    s+=`<h4>Strength<span>${esc(x.scheme||'')}</span></h4><ul>${li({name:x.lift,p:LIFTS[x.fam]?.pat})}</ul>`;
+    const its=(x.moves||[]).map(id=>MB[id]).filter(Boolean).map(m=>({id:m.id,name:m.n,p:m.p}));
+    if(its.length) s+=`<h4>Conditioning and accessory<span></span></h4><ul>${its.map(li).join('')}</ul>`;
+  }
+  return s+`<p class="muted small" style="margin:8px 0 0">Tap an exercise to open it in Moves.</p></div>`;
+}
+function renderCal(){
+  const H=store.history, m=calMonth||new Date(new Date().getFullYear(),new Date().getMonth(),1);
+  const y=m.getFullYear(), mo=m.getMonth(), first=(new Date(y,mo,1).getDay()+6)%7, days=new Date(y,mo+1,0).getDate();
+  const byDay={}; H.forEach((x,i)=>{(byDay[dayKey(x.date)]=byDay[dayKey(x.date)]||[]).push(i);});
+  const inMonth=H.filter(x=>{const d=new Date(x.date);return d.getFullYear()===y&&d.getMonth()===mo;}).length;
+  const todayK=dayKey(Date.now());
+  let h=`<div class="top"><h1>Calendar</h1><span class="muted small">${inMonth} session${inMonth===1?'':'s'} this month</span></div>
+  <div class="card"><div class="cal-h"><button data-a="calmove" data-d="-1" aria-label="Previous month">\u2039</button><h2>${esc(m.toLocaleDateString(undefined,{month:'long',year:'numeric'}))}</h2><button data-a="calmove" data-d="1" aria-label="Next month">\u203a</button></div>
+  <div class="cal">${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<span class="wd">${d}</span>`).join('')}${'<span></span>'.repeat(first)}`;
+  for(let d=1;d<=days;d++){
+    const k=y+'-'+(mo+1)+'-'+d, list=byDay[k]||[];
+    h+=`<button data-a="calday" data-k="${k}" class="${list.length?'has':''} ${k===todayK?'today':''}" aria-pressed="${calDay===k}" aria-label="${d}${list.length?`, ${list.length} session${list.length>1?'s':''}`:''}">${d}<span class="dots">${list.slice(0,3).map(i=>`<i style="--c:${PCOL[LIFTS[H[i].fam]?.pat]||PCOL.mob}"></i>`).join('')}</span></button>`;
+  }
+  h+=`</div></div>`;
+  const sel=calDay&&byDay[calDay];
+  if(sel) sel.forEach(i=>{const x=H[i]; h+=`<div class="card"><h2>Session ${x.n}: ${esc(x.lift)}${x.weight?` ${x.weight} kg`:''}</h2><div class="muted small">${esc(FMT_NAMES[x.format]||'')}${x.score?`: ${esc(x.score)}`:''}${x.feel?`. Felt ${esc(x.feel.toLowerCase())}`:''}</div>${sessionDetail(x)}</div>`;});
+  else h+=`<p class="muted">${calDay?'No workout that day.':'Tap a marked day to see that workout. Dot colours match the day\u2019s main lift.'}</p>`;
+  return h;
+}
 function renderLog(){
   const H=store.history, wk=H.filter(h=>h.date>=weekStart()).length;
   const found=doneSet().size;
@@ -719,9 +777,10 @@ function renderLog(){
   if(!H.length) h+=`<p class="muted" style="margin:0">Nothing logged yet. Roll your first workout on the Today tab.</p>`;
   H.slice().reverse().forEach((x,ri)=>{
     const d=new Date(x.date); const idx=H.length-1-ri;
-    h+=`<div class="hist"><div class="t"><span>Session ${x.n}: ${esc(x.lift)}${x.weight?` ${x.weight} kg`:''}</span><span class="muted">${d.toLocaleDateString(undefined,{day:'numeric',month:'short'})}</span></div>
-      <div class="muted small">${esc(FMT_NAMES[x.format]||'')}${x.score?`: ${esc(x.score)}`:''}${x.feel?`. Felt ${esc(x.feel.toLowerCase())}`:''}${x.newCount?`. ${x.newCount} new move${x.newCount>1?'s':''}`:''}</div>
-      <button class="linkbtn" data-a="del" data-i="${idx}" style="padding:4px 0 0">${pending==='del'+idx?'Tap again to delete':'Delete'}</button></div>`;
+    h+=`<details class="hist" data-idx="${idx}" ${openHist===idx?'open':''}><summary><div class="t"><span>Session ${x.n}: ${esc(x.lift)}${x.weight?` ${x.weight} kg`:''}</span><span class="muted">${d.toLocaleDateString(undefined,{day:'numeric',month:'short'})}</span></div>
+      <div class="muted small">${esc(FMT_NAMES[x.format]||'')}${x.score?`: ${esc(x.score)}`:''}${x.feel?`. Felt ${esc(x.feel.toLowerCase())}`:''}${x.newCount?`. ${x.newCount} new move${x.newCount>1?'s':''}`:''}. <u>Details</u></div></summary>
+      ${sessionDetail(x)}
+      <button class="linkbtn" data-a="del" data-i="${idx}" style="padding:4px 0 0">${pending==='del'+idx?'Tap again to delete':'Delete'}</button></details>`;
   });
   h+=`</div><div class="card"><h2>Backup</h2>
     <p class="muted small" style="margin:0 0 12px">Your data lives only on this phone. Export a backup to Files every few weeks.</p>
@@ -830,7 +889,9 @@ document.addEventListener('click',e=>{
     const newCount=moves.filter(id=>!done.has(id)).length;
     const w=parseFloat(String(s.weight).replace(',','.'));
     store.history.push({date:Date.now(),n:s.n,fam:s.fam,lift:s.lift,scheme:s.scheme,weight:isFinite(w)?w:null,format:s.format,score:s.score,feel:s.feel,energy:s.energy,
-      moves,pats:(s.blocks.find(b=>b.key==='cond')?.items||[]).map(i=>i.p),newCount,mins:s.startedAt?Math.round((Date.now()-s.startedAt)/60000):null});
+      moves,pats:(s.blocks.find(b=>b.key==='cond')?.items||[]).map(i=>i.p),newCount,mins:s.startedAt?Math.round((Date.now()-s.startedAt)/60000):null,
+      start:s.startedAt||null,end:Date.now(),
+      blocks:s.blocks.map(b=>({key:b.key,title:b.title,meta:b.meta,done:!!s.done[b.key],items:b.items.map(i=>({id:i.id||null,name:i.name,dose:i.dose,p:i.p}))}))});
     store.current=null; save(); render(); window.scrollTo(0,0);
     toast(`Session ${s.n} logged${newCount?`. ${newCount} new move${newCount>1?'s':''} found`:''}.`);
   }
@@ -850,6 +911,12 @@ document.addEventListener('click',e=>{
     save(); const open=a.closest('details'); render();
   }
   if(act==='export'){ exportData(); }
+  if(act==='calmove'){ const m=calMonth||new Date(new Date().getFullYear(),new Date().getMonth(),1); calMonth=new Date(m.getFullYear(),m.getMonth()+(+a.dataset.d),1); calDay=null; render(); }
+  if(act==='calday'){ calDay=calDay===a.dataset.k?null:a.dataset.k; render(); }
+  if(act==='findmove'){
+    const m=MB[a.dataset.id]; if(!m) return;
+    moveQuery=m.n; openMove=m.id; tab='moves'; render(); window.scrollTo(0,0);
+  }
   if(act==='del'){ const i=+a.dataset.i; if(pending==='del'+i){pending=null;store.history.splice(i,1);save();render();toast('Session deleted.');} else arm('del'+i); }
 });
 setInterval(()=>{const c=$('#clock');if(c&&store.current?.startedAt)c.textContent=mmss((Date.now()-store.current.startedAt)/1000);},1000);
