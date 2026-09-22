@@ -1,6 +1,6 @@
 // Page: network first, cache when offline. Other app files: cache first, refreshed in the background.
 // Exercise photos: kept in their own cache once viewed, so they work offline too.
-const CACHE = 'reroll-v8';
+const CACHE = 'reroll-v9';
 const IMG_CACHE = 'reroll-photos';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
